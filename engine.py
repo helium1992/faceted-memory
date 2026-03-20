@@ -5,12 +5,23 @@
 2. 动态遮蔽：查询中缺失的维度自动跳过
 3. 加权打分：各维度可配置权重
 """
+import hashlib
 import numpy as np
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
 
 from .vocabulary import Dimension
 
+
+# 强匹配维度（门控）：至少1个强维度有匹配才进入排名
+STRONG_DIMS = frozenset({
+    Dimension.NOUN_PERSON,
+    Dimension.NOUN_PLACE,
+    Dimension.NOUN_ORG,
+    Dimension.NOUN_EVENT,
+    Dimension.NOUN_PROJECT,
+    Dimension.NOUN_CONCEPT,
+})
 
 # 默认维度权重（17维度）
 DEFAULT_WEIGHTS: Dict[Dimension, float] = {
@@ -92,7 +103,7 @@ class CharNGramEmbedder(Embedder):
             for n in range(self._ngram_range[0], self._ngram_range[1] + 1):
                 for i in range(len(term) - n + 1):
                     ngram = term[i:i + n]
-                    idx = hash(ngram) % self._dim
+                    idx = int.from_bytes(hashlib.md5(ngram.encode('utf-8')).digest()[:4], 'little') % self._dim
                     vec[idx] += 1.0
 
         # L2 归一化
@@ -184,10 +195,33 @@ class FacetedEngine:
             masked_dims=masked_dims,
         )
 
+    def _passes_gate(self, query_vectors: Dict[str, np.ndarray],
+                      memory_vectors: Dict[str, np.ndarray]) -> bool:
+        """门控检查：查询和记忆是否在至少1个强维度上都有向量"""
+        for dim in STRONG_DIMS:
+            dv = dim.value
+            if dv in query_vectors and dv in memory_vectors:
+                return True
+        return False
+
     def rank(self, query_vectors: Dict[str, np.ndarray],
              memory_list: List[Dict[str, np.ndarray]],
              top_k: int = 10) -> List[ScoredResult]:
-        """对多条记忆排序，返回Top-K"""
-        results = [self.score(query_vectors, m) for m in memory_list]
+        """对多条记忆排序，返回Top-K
+
+        门控规则：查询和记忆必须在至少1个强维度上同时有向量，
+        否则该记忆不参与排名。弱维度再多也无法通过门控。
+        """
+        # 检查查询是否包含任何强维度
+        query_has_strong = any(d.value in query_vectors for d in STRONG_DIMS)
+
+        if not query_has_strong:
+            # 查询无强维度：直接返回空结果，省token
+            return []
+
+        # 正常模式：只对通过门控的记忆评分
+        gated = [m for m in memory_list if self._passes_gate(query_vectors, m)]
+
+        results = [self.score(query_vectors, m) for m in gated]
         results.sort(key=lambda r: r.total_score, reverse=True)
         return results[:top_k]

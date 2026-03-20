@@ -56,7 +56,11 @@ constraint  — 约束/条件
 
 ### 第 2 步：安装依赖
 
-本模块**零外部依赖**，仅使用 Python 标准库（sqlite3、json、os、time、uuid 等）。
+```bash
+pip install numpy
+```
+
+仅依赖 numpy + Python 标准库（sqlite3、json、os、time、uuid 等）。
 
 ### 第 3 步：生成词库（首次）
 
@@ -128,7 +132,7 @@ for r in results:
 
 #### 方式 C：与 IDE Claw 集成
 
-在 `dual_dialog.py` 或 MCP Server 中使用（已内置支持）：
+在 `dialog.py` 或 MCP Server 中使用（已内置支持）：
 
 ```python
 from faceted_memory.middleware import MemoryMiddleware
@@ -218,5 +222,16 @@ faceted_memory/
 ├── middleware.py        ← 通信中间件
 ├── gen_vocab.py        ← 词库生成工具
 ├── check_db.py         ← 数据库检查工具
+├── THIRD_PARTY_LICENSES.md  ← 第三方许可证
 └── test_*.py           ← 测试文件
 ```
+
+---
+
+## Acknowledgments
+
+This project uses the following open-source library:
+
+- **[NumPy](https://numpy.org/)** — BSD-3-Clause License
+
+See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for full details.

@@ -28,7 +28,7 @@ class MemoryMiddleware:
     def __init__(self, db_path: str, vocab_dir: str = None,
                  embedder: Embedder = None,
                  top_k: int = 3,
-                 min_score: float = 0.1,
+                 min_score: float = 0.65,
                  auto_store: bool = True):
         """
         Args:
